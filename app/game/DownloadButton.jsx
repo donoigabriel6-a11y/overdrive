@@ -5,7 +5,7 @@ import '../assets/Inter-Regular.ttf';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { useEffect, useRef, useState } from 'react';
 import { STALE_PARTIAL, cause, explainError } from '../downloads/errors.js';
-import { WAITING, shownState } from '../downloads/labels.js';
+import { WAITING, clientOf, shownState } from '../downloads/labels.js';
 import { Choice, TextAction } from './Choice.jsx';
 import { DISABLED, DownloadLabel, statusLine } from './DownloadLabel.jsx';
 import { MoreOptions, ProblemNote } from './DownloadProblem.jsx';
@@ -134,6 +134,10 @@ import { DownloadFormats, Platform, Text, View, motion } from '@ps5-react/core';
     const amount = sizeless ? formatBytes(job2?.written || 0) : formatPercent2(Math.round(progress * 100));
     const shown = job2 && shownState(job2) === "finishing" ? "finishing" : status;
     const [state, line] = statusLine(stale ? download.status : shown, progress, sizeGb);
+    // A converted download is really coming from the service: said beside its state here and in the
+    // queue's row (downloads/DownloadRow.jsx), so the source on screen is not a lie.
+    const via = clientOf(job2);
+    const stateText = via ? `${state} \xB7 ${t2("download.via", { service: via })}` : state;
     const detail2 = sizeless ? t2("download.soFar", { size: formatBytes(job2?.written || 0) }) : line;
     const problem = browser ? {
       title: step ? t2("download.browser.partTitle", step) : t2("download.browser.title"),
@@ -240,7 +244,7 @@ import { DownloadFormats, Platform, Text, View, motion } from '@ps5-react/core';
         /* @__PURE__ */ (0, jsx)(FocusRing, {})
       ] }),
       /* @__PURE__ */ (0, jsxs)(View, { style: { flexDirection: "row", justifyContent: "space-between" }, children: [
-        WAITING.includes(shown) ? /* @__PURE__ */ (0, jsx)(ShimmerText, { textStyle: STATUS, children: state }) : /* @__PURE__ */ (0, jsx)(Text, { style: { fontFamily: "Inter-Regular", fontSize: 21, color: "#8a8a94", lineHeight: 30 }, children: state }),
+        WAITING.includes(shown) ? /* @__PURE__ */ (0, jsx)(ShimmerText, { textStyle: STATUS, children: stateText }) : /* @__PURE__ */ (0, jsx)(Text, { style: { fontFamily: "Inter-Regular", fontSize: 21, color: "#8a8a94", lineHeight: 30 }, children: stateText }),
         detail2 ? /* @__PURE__ */ (0, jsx)(Text, { style: { fontFamily: "Inter-Regular", fontSize: 21, color: "#8a8a94", lineHeight: 30 }, children: detail2 }) : null
       ] }),
       problem ? /* @__PURE__ */ (0, jsx)(ProblemNote, { title: problem.title, action: problem.action }) : notice ? /* @__PURE__ */ (0, jsx)(Text, { style: { width: 408, fontFamily: "Inter-Regular", fontSize: 21, color: "#a3a3ab", numberOfLines: 3, ellipsizeMode: "tail", lineHeight: 30 }, children: notice.slice(0, 160) }) : null,

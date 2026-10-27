@@ -32,5 +32,14 @@ import { COMPLETE } from '../state/download-queue.js';
   var hasStateLabel = (state) => LABELED.has(state);
   var stateLabel = (state) => t(`downloadState.${state}`);
   var clearAction = (state) => COMPLETE.includes(state) ? "remove" : "cancel";
+  // The service that fetched the file, once one did: a converted catalog download keeps the source
+  // it was offered as, so the screens have to say where it is really coming from. A multi-part set
+  // converts part by part (download-queue.js), so the part in flight answers first.
+  var clientOf = (job2) => {
+    const source = job2?.parts ? job2.parts[job2.partIndex] : job2;
+    if (source?.viaRealDebrid) return "Real-Debrid";
+    if (source?.viaTorbox) return "TorBox";
+    return "";
+  };
 
-export { WAITING, clearAction, hasStateLabel, shownState, stateLabel };
+export { WAITING, clearAction, clientOf, hasStateLabel, shownState, stateLabel };

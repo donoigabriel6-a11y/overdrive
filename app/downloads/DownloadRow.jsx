@@ -9,7 +9,7 @@ import { RowProgress, ROW } from './RowProgress.jsx';
 import { StatsStrip } from './StatsStrip.jsx';
 import { PANEL_KEY } from './SummaryPanel.jsx';
 import { STALE_PARTIAL, cause, explainError } from './errors.js';
-import { WAITING, clearAction, shownState, stateLabel } from './labels.js';
+import { WAITING, clearAction, clientOf, shownState, stateLabel } from './labels.js';
 import { shapeOf } from './useQueue.js';
 import { isOverdriveCdn } from '../game/sources.js';
 import { focusEnd, useLocale, useT } from '../i18n/index.js';
@@ -113,7 +113,9 @@ import { Text, View } from '@ps5-react/core';
     // the first row's X landed on the storage block (2026-10-25).
     const vertical = (kind) => ({ nextFocusUp: up?.[kind], nextFocusDown: down?.[kind] });
     const onFocus = () => onFocusRow(job2);
-    const meta = [shownFormat(job2, release).toUpperCase(), `${release.provider} ${release.version || ""}`.trim(), job2.root].join(" \xB7 ");
+    // "Via TorBox" leads: the line truncates from the end, and the drive matters least.
+    const via = clientOf(job2);
+    const meta = [via && t2("download.via", { service: via }), shownFormat(job2, release).toUpperCase(), `${release.provider} ${release.version || ""}`.trim(), job2.root].filter(Boolean).join(" \xB7 ");
     const problem = job2.error && explainError(job2.error, Boolean(release.parts));
     // The files' own title id differs from the game chosen: said before anything else but an error.
     const mismatch = job2.titleMismatch ? t2("downloads.titleMismatch", { found: job2.titleMismatch, expected: job2.titleId }) : "";

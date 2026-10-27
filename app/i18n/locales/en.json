@@ -145,6 +145,7 @@
     "download.status.progress": "{done} of {total}",
     "download.status.ready": "Ready to download",
     "download.status.unavailable": "This catalog entry has no file URL",
+    "download.via": "Via {service}",
     "downloadState.awaiting-browser": "Waiting for browser verification",
     "downloadState.connecting": "Connecting\u2026",
     "downloadState.downloaded": "Ready to install",

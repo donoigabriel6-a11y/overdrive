@@ -157,6 +157,7 @@
   "download.status.progress": "{done} di {total}",
   "download.status.ready": "Pronto per il download",
   "download.status.unavailable": "Questa voce del catalogo non ha un link al file",
+  "download.via": "Via {service}",
   "downloadState.awaiting-browser": "In attesa della verifica nel browser",
   "downloadState.connecting": "Connessione…",
   "downloadState.downloaded": "Pronto da installare",

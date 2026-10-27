@@ -2,6 +2,7 @@
 // reconstructed from the esbuild bundle in eboot.bin
 
 import { useEffect, useState } from 'react';
+import { clientOf } from './labels.js';
 import { createActivity } from './rates.js';
 import { downloadQueue } from '../state/downloads.js';
 
@@ -12,7 +13,9 @@ import { downloadQueue } from '../state/downloads.js';
       return void 0;
     }
   }
-  var shapeOf = (job2) => `${job2.id}|${job2.state}|${job2.phase || ""}|${job2.error}|${job2.message || ""}|${job2.total}`;
+  // The service that ends up fetching a job changes while its state does not (download-queue.js sets
+  // it at the end of the resolution): it belongs to the shape, or the row keeps the old meta line.
+  var shapeOf = (job2) => `${job2.id}|${job2.state}|${job2.phase || ""}|${job2.error}|${job2.message || ""}|${job2.total}|${clientOf(job2)}`;
   var fractionOf = (progress) => progress?.total ? Math.min(1, progress.written / progress.total) : 0;
   function useJobs() {
     const [state, setState] = (0, useState)({ jobs: [], shape: "", error: "" });
