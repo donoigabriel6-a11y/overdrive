@@ -58,7 +58,7 @@ prepares. Each uses your own account key, typed once and kept on the console.
 - **Browse the whole library** with filters, sorting, scores and download sizes at a glance
 - **Downloads straight to the console**, to internal storage or any USB drive, with live speed and storage stats
 - **Favorites**, **search** with an on-screen keyboard, and a **Files** page to see and clean up what's on your drives
-- **18 languages**: English, Deutsch, Español, Français, Italiano, Nederlands, Português (Brasil), Português (Portugal), Русский, Bahasa Indonesia, 日本語, 简体中文, 繁體中文, العربية, فارسی, اردو, हिन्दी, বাংলা
+- **19 languages**: English, Deutsch, Español, Français, Italiano, Nederlands, Polski, Português (Brasil), Português (Portugal), Русский, Bahasa Indonesia, 日本語, 简体中文, 繁體中文, العربية, فارسی, اردو, हिन्दी, বাংলা
 - **Updates itself**: a new version installs from the console, no PC needed
 - Made for the controller: <kbd>L1</kbd> <kbd>R1</kbd> to switch sections, <kbd>✕</kbd> to select, <kbd>○</kbd> to go back
 
