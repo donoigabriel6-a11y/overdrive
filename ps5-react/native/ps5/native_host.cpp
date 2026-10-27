@@ -69,20 +69,24 @@ void hui_heap_stats(std::size_t* live_bytes, std::size_t* peak_bytes, std::size_
 // Extraction steps go to the console log, so the crash log keeps the last one before a fault.
 bool archives::list_directory(const char* path, void (*visit)(const char*, void*), void* user) { return host::read_dir(path, visit, user); }
 void archives::trace(const char* step, const char* detail) { async_log::write("[PS5-REACT] archive %s %s", step, detail); }
+// The preflight's ceiling: the most it admits an in-process (libarchive) decoder to take, and what the
+// host reserves when the archive declares nothing of its own (a ZIP, a RAR libarchive speaks for).
+constexpr std::uint64_t in_app_decoder_bytes = 64ULL * 1024 * 1024;
 // The extraction's write ring: larger on larger heaps, and none (inline writes, as before) unless the
-// heap still has room for the 64 MiB decoder budget the preflight admits, the ring, and a margin.
-std::size_t archives::pipeline_bytes() {
+// heap still has room for the archive's decoder, the ring, and a margin.
+std::size_t archives::pipeline_bytes(std::uint64_t decoder) {
   constexpr std::size_t MiB = 1024 * 1024;
   std::size_t size = 0, live = 0, peak = 0, blocks = 0, failures = 0;
   hui_heap_capacity(&size, nullptr, nullptr);
   hui_heap_stats(&live, &peak, &blocks, &failures);
+  const std::size_t reserve = decoder ? static_cast<std::size_t>(decoder) : in_app_decoder_bytes;
   const std::size_t ring = size >= 256 * MiB ? 32 * MiB : size >= 192 * MiB ? 16 * MiB : 8 * MiB;
-  return live + 64 * MiB + ring + 16 * MiB <= size ? ring : 0;
+  return live + reserve + ring + 16 * MiB <= size ? ring : 0;
 }
 // The image caches drop to their low budgets for an in-process extraction (the render thread trims
-// within a frame or two; images on screen stay), then the heap must still hold the decoder budget and
-// the margin. pipeline_bytes() sizes the ring from what is left after the trim.
-bool archives::hold_memory(bool hold) {
+// within a frame or two; images on screen stay), then the heap must still hold the decoder's own memory
+// and the margin. pipeline_bytes() sizes the ring from what is left after the trim.
+bool archives::hold_memory(bool hold, std::uint64_t decoder) {
   images::hold_memory(hold);
   if (!hold) return true;
   for (int i = 0; i < 25 && images::memory().decoded > images::kLowCacheBytes; ++i) usleep(10'000);
@@ -90,9 +94,10 @@ bool archives::hold_memory(bool hold) {
   std::size_t size = 0, live = 0, peak = 0, blocks = 0, failures = 0;
   hui_heap_capacity(&size, nullptr, nullptr);
   hui_heap_stats(&live, &peak, &blocks, &failures);
-  const bool room = !size || live + 64 * MiB + 16 * MiB <= size;
-  async_log::write("[PS5-REACT] extraction memory: heap=%zu/%zuMiB img decoded=%zuKiB room=%d", live >> 20, size >> 20,
-                   images::memory().decoded >> 10, room);
+  const std::size_t reserve = decoder ? static_cast<std::size_t>(decoder) : in_app_decoder_bytes;
+  const bool room = !size || live + reserve + 16 * MiB <= size;
+  async_log::write("[PS5-REACT] extraction memory: heap=%zu/%zuMiB decoder=%zuMiB img decoded=%zuKiB room=%d", live >> 20,
+                   size >> 20, reserve >> 20, images::memory().decoded >> 10, room);
   return room;
 }
 bool archives::downloading() { return network::downloading(); }

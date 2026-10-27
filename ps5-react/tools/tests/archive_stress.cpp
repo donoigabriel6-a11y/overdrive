@@ -21,11 +21,11 @@ bool archives::list_directory(const char* path, void (*visit)(const char*, void*
   closedir(d);
   return true;
 }
-std::size_t archives::pipeline_bytes() {
+std::size_t archives::pipeline_bytes(std::uint64_t) {
   const char* v = std::getenv("ARCHIVE_PIPELINE_BYTES");
   return v ? std::strtoull(v, nullptr, 10) : 32u << 20;
 }
-bool archives::hold_memory(bool) { return true; }
+bool archives::hold_memory(bool, std::uint64_t) { return true; }
 
 namespace {
 int open_descriptors() {

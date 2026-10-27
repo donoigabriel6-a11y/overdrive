@@ -30,17 +30,21 @@ bool list_directory(const char* path, void (*visit)(const char* name, void* user
 // Each extraction step, for the console's crash log; the host defines it (a no-op on the desktop).
 void trace(const char* step, const char* detail = "");
 // Bytes the host lets one extraction hold for buffered writes; under 1 MiB, files are written inline.
-std::size_t pipeline_bytes();
+// `decoder` is what the archive's own decoder will take, as the preflight measured it (0: the 64 MiB
+// ceiling the preflight admits).
+std::size_t pipeline_bytes(std::uint64_t decoder = 0);
 // Called with true before an in-process (libarchive) extraction opens its archive and with false after
 // it ends. The host frees what it can for it; false means the heap lacks room even for inline writes,
-// and the job fails with no_memory instead of the title running out of heap.
-bool hold_memory(bool hold);
+// and the job fails with no_memory instead of the title running out of heap. `decoder` is what the
+// archive's decoder will take besides them (0: the 64 MiB ceiling).
+bool hold_memory(bool hold, std::uint64_t decoder = 0);
 inline constexpr const char* no_memory = "Not enough memory to extract.";
 // True while the host downloads a file; a RAR extraction then leaves it more cores. Cheap, any thread.
 bool downloading();
 // RAR sets go to rar-extract (native/rar_worker), a program of its own: UnRAR's license keeps its code
 // out of this engine. So does a 7z whose decoder needs more memory than this heap gives, within the
-// worker's budget: the worker has the console's memory. The host starts it with `request` as its input
+// worker's budget, and any 7z the heap has no room for when its extraction starts: the worker has the
+// console's memory. The host starts it with `request` as its input
 // (the console's payload loader, a child process on the desktop) and returns its stream, or -1 with
 // `error` when it cannot.
 int start_rar_worker(const std::string& request, std::string& error);

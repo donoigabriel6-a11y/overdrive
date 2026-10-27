@@ -583,6 +583,12 @@ def main():
   subprocess.run([prefix+"/bin/bsdtar","--format=7zip","--options=7zip:compression=lzma2,7zip:compression-level=9","-cf",str(big),"-C",str(root),"payload.bin"],check=True)
   # 7-Zip ultra's 64 MiB dictionary is the budget itself.
   assert run("big-7zip",[big])[0]=="completed"
+  # A 7z the preflight admits still needs room in the heap to decode, and the title's own UI can have
+  # taken it (covers on screen never trim): with none, rar-extract extracts it instead of the job failing.
+  held=root/"held.7z";held.write_bytes(declare_7z_dictionary(big.read_bytes(),24))
+  traced=phases("held-7zip",[held],ARCHIVE_NO_MEMORY="1")
+  assert "preflight 7z for the worker, MiB 16" in traced and "7z worker started" in traced,traced
+  assert (root/"held-7zip/payload.bin").read_bytes()==DATA
   # A 7z whose dictionary the app's heap cannot hold extracts in rar-extract, up to the worker's budget
   # (288 MiB): 256 MiB is what repacks use. Past it, and without a worker, the refusal stands.
   wide=root/"wide.7z";wide.write_bytes(declare_7z_dictionary(big.read_bytes(),32))

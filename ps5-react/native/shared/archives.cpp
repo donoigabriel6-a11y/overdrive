@@ -521,8 +521,9 @@ void use_utf8_names() {
 }
 // The host's memory hold for the libarchive path, released once the archive is freed.
 struct MemoryHold {
-  const bool room = hold_memory(true);
+  explicit MemoryHold(std::uint64_t decoder) : room(hold_memory(true, decoder)) {}
   ~MemoryHold() { hold_memory(false); }
+  const bool room;
 };
 archive* open_archive(Job& job, std::string& error, std::unique_ptr<Rar5PasswordReader>& decrypted) {
   const auto& request = job.request;
@@ -832,15 +833,24 @@ void run(const std::shared_ptr<Job>& pointer) {
   };
   std::uint64_t seven_zip_memory = 0;
   const auto refusal = request.stream ? streamed() : preflight(request.sources, seven_zip_memory);
-  // A 7z refused for the heap's memory alone, within rar-extract's budget, goes to the worker; its paths go
-  // to the worker's line protocol. Without a worker the refusal stands.
+  // A 7z within rar-extract's budget goes to the worker; its paths go to the worker's line protocol.
+  // Without a worker the refusal stands.
   const bool lines = request.destination.find('\n') == std::string::npos &&
       std::none_of(request.sources.begin(), request.sources.end(), [](const std::string& path) { return path.find('\n') != std::string::npos; });
-  const bool seven_zip_worker = !refusal.empty() && seven_zip_memory && seven_zip_memory <= seven_zip_worker_memory && lines;
+  const bool worker_can = seven_zip_memory && seven_zip_memory <= seven_zip_worker_memory && lines;
+  bool seven_zip_worker = !refusal.empty() && worker_can;
   if (!refusal.empty() && !seven_zip_worker) {
     trace("preflight refused", refusal.c_str());
     fail(job, refusal);
     return;
+  }
+  // The preflight reads the archive's headers, not this heap: a 7z it admits still needs room to decode,
+  // and the title's own UI can have taken it (covers on screen are never trimmed; browsing to the queue
+  // left 34 MiB of them decoded). Rather than fail the extraction there, the worker decodes the archive,
+  // as it already does the larger ones.
+  if (refusal.empty() && worker_can) {
+    const MemoryHold probe{seven_zip_memory};
+    if (!probe.room) seven_zip_worker = true;
   }
   if (seven_zip_worker) trace("preflight 7z for the worker, MiB", std::to_string(seven_zip_memory >> 20).c_str());
   else trace("preflight ok");
@@ -907,7 +917,7 @@ void run(const std::shared_ptr<Job>& pointer) {
     if (!extract_worker(job, staging, receipt, error, seven_zip_request(request, staging, seven_zip_memory), "7z") && error.empty())
       error = "This archive needs the payload loader to extract: none answered on port 9021.";
   } else if (!rar_volumes(request) || !extract_rar(job, staging, receipt, error)) {
-    const MemoryHold memory;
+    const MemoryHold memory(seven_zip_memory);
     std::unique_ptr<Rar5PasswordReader> decrypted;
     auto* archive = open_archive(job, error, decrypted);
     if (!memory.room) error = no_memory;
@@ -915,7 +925,7 @@ void run(const std::shared_ptr<Job>& pointer) {
     {
       // Without the ring or its threads, files are written inline as before.
       Writer writer(job.cancelled, job.timings);
-      const bool pipelined = writer.start(pipeline_bytes(), receipt);
+      const bool pipelined = writer.start(pipeline_bytes(seven_zip_memory), receipt);
       trace("writer", pipelined ? "pipelined" : "inline");
       const auto started = std::chrono::steady_clock::now();
       const auto cpu_started = thread_cpu_us();

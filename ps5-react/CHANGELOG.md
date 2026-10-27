@@ -97,6 +97,13 @@
   console needs over a second to give it: a payload's `malloc` has no ceiling of its own, and a probe
   that took 512 MiB and more froze a console's interface. The process exits after each archive, which
   hands the memory back.
+- A 7z the preflight admits is no longer refused when the title's heap happens to be full: the
+  extraction asks the heap before it starts and, with no room even for the archive's own dictionary,
+  sends the 7z to `rar-extract` as it does the larger ones. Covers on screen are never trimmed, so a
+  title on its Downloads page held 121 MiB live and 34 MiB decoded, and a small 7z failed with "Not
+  enough memory to extract." every time. The in-process hold also reserves the memory the archive
+  declares rather than the preflight's 64 MiB ceiling, so a small dictionary extracts in the app on a
+  heap that has room for it and no more; `extraction memory:` logs that `decoder=` beside the heap.
 - What both extractors share (report lines, path rule, SHA-256, the writer thread) moved from
   `rar_worker.cpp` to `worker_io.hpp`.
 
