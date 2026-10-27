@@ -3,7 +3,7 @@
 
 import { jsx, jsxs } from 'react/jsx-runtime';
 import { useEffect, useState } from 'react';
-import { AppRegistry, FocusScope, ReleaseImages, View } from '@ps5-react/core';
+import { AppRegistry, FileSystem, FocusScope, ReleaseImages, View } from '@ps5-react/core';
 import { BrowsePage } from './browse/BrowsePage.jsx';
 import { FavoritesScreen } from './browse/FavoritesScreen.jsx';
 import { DownloadsScreen } from './downloads/DownloadsScreen.jsx';
@@ -27,6 +27,7 @@ import { useInterfaceSounds } from './ui/sounds.js';
 import { useShowLibrary } from './ui/useSections.js';
 import { VERSION } from './version.js';
 import { BUILD } from './build.js';
+import { games, twins } from './data/catalog.js';
 
   function Screen({ screen: screen2 }) {
     const { openGame, pop } = useNavActions();
@@ -110,4 +111,17 @@ import { BUILD } from './build.js';
   // Which build wrote this session of app.log: a draft rebuilt with the same version is otherwise
   // indistinguishable from the one before it.
   console.log(`[overdrive] version ${VERSION} build ${BUILD.commit}${BUILD.built ? ` ${BUILD.built}` : ""}`);
+  // The same files at another cluster size make an image of another size, so what app.log says about
+  // the image is how a console test tells two drafts of one version apart. The free space is the
+  // image's own slack, and the app reads its catalog files from this volume.
+  try {
+    const image = FileSystem.diskUsage(FileSystem.appDir);
+    console.log(`[overdrive] image ${FileSystem.appDir}: ${(image.total / 1048576).toFixed(0)} MiB total, ` +
+      `${((image.total - image.free) / 1048576).toFixed(0)} MiB in use, ${(image.free / 1048576).toFixed(0)} MiB free`);
+  } catch (error) {
+    console.log(`[overdrive] image ${FileSystem.appDir}: usage not read: ${error.message}`);
+  }
+  // What the lists hold after the nightly update, if one was kept: a build whose catalog did not
+  // arrive intact otherwise looks like a working one with games missing.
+  console.log(`[overdrive] catalog: ${games.length} games, ${twins.length} editions`);
   AppRegistry.registerComponent("overdrive", () => () => /* @__PURE__ */ (0, jsx)(Boot, {}));

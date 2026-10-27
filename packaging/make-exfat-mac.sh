@@ -9,7 +9,7 @@ set -euo pipefail
 app="${1:-}"
 out="${2:-}"
 label="${3:-OVERDRIVE}"
-cluster="${4:-64K}"
+cluster="${4:-8K}"
 
 if [ -z "$app" ] || [ -z "$out" ]; then
     echo "usage: $0 <app-folder> <out.exfat> [label] [cluster-size]" >&2
@@ -22,10 +22,13 @@ for tool in hdiutil newfs_exfat fsck_exfat; do
 done
 
 case "$cluster" in
+    4K|4k) cluster_bytes=4096 ;;
+    8K|8k) cluster_bytes=8192 ;;
+    16K|16k) cluster_bytes=16384 ;;
     32K|32k) cluster_bytes=32768 ;;
     64K|64k) cluster_bytes=65536 ;;
     128K|128k) cluster_bytes=131072 ;;
-    *) echo "error: cluster size must be 32K, 64K or 128K" >&2; exit 2 ;;
+    *) echo "error: cluster size must be 4K, 8K, 16K, 32K, 64K or 128K" >&2; exit 2 ;;
 esac
 
 mount_point="/Volumes/$label"
@@ -38,13 +41,13 @@ fi
 # clusters, and the app ships thousands of small JSON files, so the payload's
 # apparent size underestimates the volume. This is the same formula as
 # make-exfat.sh, with macOS's stat instead of GNU find -printf.
-slack=$(( ${EXFAT_SLACK_MB:-128} * 1024 * 1024 ))
+slack=$(( ${EXFAT_SLACK_MB:-32} * 1024 * 1024 ))
 clusters=$(find "$app" -type f -exec stat -f%z {} + |
     awk -v c="$cluster_bytes" '{ n += int(($1 + c - 1) / c) } END { print n + 0 }')
 directories=$(find "$app" -type d | wc -l | tr -d ' ')
 payload=$(( (clusters + directories) * cluster_bytes ))
 size=$(( (payload + slack + 1048575) / 1048576 * 1048576 ))
-printf '→ exFAT: %s MiB, %s clusters, label %s\n' "$((size / 1048576))" "$cluster" "$label"
+printf '→ exFAT: %s MiB, %s clusters, label %s, cluster %s\n' "$((size / 1048576))" "$clusters" "$label" "$cluster"
 
 if [ -e "$out" ]; then
     echo "→ replacing $out"
