@@ -94,19 +94,21 @@ mkfs_out=$(mkfs.exfat -L "$label" -c "$cluster" "$out" 2>&1) || {
 }
 printf '%s\n' "$mkfs_out" | sed 's/^/mkfs.exfat: /'
 
-# The image's own answer rather than the argument's: in the boot sector, byte 109 is
-# log2(bytes per sector) and byte 110 is log2(sectors per cluster), so their sum is
-# log2(bytes per cluster). The label is bytes 96-106, UTF-16LE.
-read -r shift_sector shift_cluster < <(od -An -tu1 -j 109 -N 2 "$out")
-actual=$(( (1 << shift_sector) << shift_cluster ))
-image_label=$(od -An -tu1 -j 96 -N 22 "$out" | awk '{ for (i = 1; i <= NF; i += 2) if ($i) printf "%c", $i }')
-echo "make-exfat: boot sector says label $image_label, sector $((1 << shift_sector)) bytes, cluster $actual bytes"
-if [ "$actual" != "$cluster_bytes" ]; then
-    echo "error: the image came out with $actual-byte clusters, not $cluster_bytes" >&2
+# The image's own answer rather than the argument's, from the boot sector: byte 108 is
+# log2(bytes per sector), 109 log2(sectors per cluster), 110 the number of FATs, and bytes
+# 92-95 the volume's cluster count (little-endian). The label is not in the boot sector:
+# exFAT keeps it as an entry in the root directory.
+read -r shift_sector shift_cluster fats < <(od -An -tu1 -j 108 -N 3 "$out")
+read -r volume_clusters < <(od -An -tu4 -j 92 -N 4 "$out")
+actual_sector=$(( 1 << shift_sector ))
+actual_cluster=$(( actual_sector << shift_cluster ))
+echo "make-exfat: boot sector: $actual_sector-byte sectors, $actual_cluster-byte clusters ($shift_cluster sectors each), $fats FAT(s), $volume_clusters clusters in the volume"
+if [ "$actual_cluster" != "$cluster_bytes" ]; then
+    echo "error: the image came out with $actual_cluster-byte clusters, not $cluster_bytes" >&2
     exit 1
 fi
-if [ "$image_label" != "$label" ]; then
-    echo "error: the image's label is $image_label, not $label" >&2
+if [ "$volume_clusters" -lt "$((clusters + directories))" ]; then
+    echo "error: the volume has $volume_clusters clusters, the app alone needs $((clusters + directories))" >&2
     exit 1
 fi
 
